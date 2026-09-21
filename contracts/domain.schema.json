@@ -8,7 +8,12 @@
     "sample_id",
     "actors",
     "facts",
-    "constraints"
+    "constraints",
+    "per_bill_checks",
+    "transfer_rules",
+    "visibility_rules",
+    "exception_events",
+    "audit_requirements"
   ],
   "properties": {
     "domain": {
@@ -17,7 +22,7 @@
     },
     "version": {
       "type": "integer",
-      "minimum": 1
+      "minimum": 2
     },
     "sample_id": {
       "type": "string",
@@ -40,6 +45,41 @@
     "constraints": {
       "type": "array",
       "minItems": 2,
+      "items": {
+        "type": "string"
+      }
+    },
+    "per_bill_checks": {
+      "type": "array",
+      "minItems": 7,
+      "items": {
+        "type": "string"
+      }
+    },
+    "transfer_rules": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string"
+      }
+    },
+    "visibility_rules": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string"
+      }
+    },
+    "exception_events": {
+      "type": "array",
+      "minItems": 7,
+      "items": {
+        "type": "string"
+      }
+    },
+    "audit_requirements": {
+      "type": "array",
+      "minItems": 1,
       "items": {
         "type": "string"
       }
