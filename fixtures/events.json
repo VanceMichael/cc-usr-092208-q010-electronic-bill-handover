@@ -1,0 +1,426 @@
+{
+  "domain": "electronic-bill-handover",
+  "version": 2,
+  "sample_id": "scenario-020",
+  "entries": [
+    {
+      "expect": "accepted",
+      "note": "承运人签发 BL-01，首个控制权人为托运方，货物批次 C-100/100箱",
+      "event": {
+        "id": "ev-01",
+        "bill_id": "BL-01",
+        "type": "bill.issued",
+        "occurred_at": "2026-09-01T07:30:00Z",
+        "signatures": [{"party": "carrier", "sig": "placeholder-sig-carrier"}],
+        "issuer": "carrier",
+        "initial_holder": "shipper",
+        "batch": {"cargo_code": "C-100", "quantity": "100", "unit": "box"}
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "装船节点（承运人在线时上报）",
+      "event": {
+        "id": "ev-02",
+        "bill_id": "BL-01",
+        "type": "transport.reported",
+        "occurred_at": "2026-09-01T08:00:00Z",
+        "signatures": [{"party": "carrier", "sig": "placeholder-sig-carrier"}],
+        "idempotency_key": "node-1",
+        "node": {"seq": 1, "code": "loaded", "place": "宁波港", "at_time": "2026-09-01T08:00:00Z"}
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "托运方将提单质押给贸易融资银行，双方签名",
+      "event": {
+        "id": "ev-03",
+        "bill_id": "BL-01",
+        "type": "bill.pledged",
+        "occurred_at": "2026-09-01T09:00:00Z",
+        "signatures": [
+          {"party": "shipper", "sig": "placeholder-sig-shipper"},
+          {"party": "bank", "sig": "placeholder-sig-bank"}
+        ],
+        "pledgee": "bank"
+      }
+    },
+    {
+      "expect": "pledge_block",
+      "note": "质押未解除时试图背书转让，必须拦截",
+      "event": {
+        "id": "ev-04",
+        "bill_id": "BL-01",
+        "type": "bill.endorsed",
+        "occurred_at": "2026-09-01T10:00:00Z",
+        "signatures": [
+          {"party": "shipper", "sig": "placeholder-sig-shipper"},
+          {"party": "buyer", "sig": "placeholder-sig-buyer"}
+        ],
+        "from_holder": "shipper",
+        "to_holder": "buyer"
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "平台因争议冻结提单",
+      "event": {
+        "id": "ev-05",
+        "bill_id": "BL-01",
+        "type": "bill.frozen",
+        "occurred_at": "2026-09-01T12:00:00Z",
+        "signatures": [{"party": "platform", "sig": "placeholder-sig-platform"}],
+        "reason": "货损争议核查"
+      }
+    },
+    {
+      "expect": "frozen",
+      "note": "冻结期间的转让指令必须拦截",
+      "event": {
+        "id": "ev-06",
+        "bill_id": "BL-01",
+        "type": "bill.endorsed",
+        "occurred_at": "2026-09-01T13:00:00Z",
+        "signatures": [
+          {"party": "shipper", "sig": "placeholder-sig-shipper"},
+          {"party": "buyer", "sig": "placeholder-sig-buyer"}
+        ],
+        "from_holder": "shipper",
+        "to_holder": "buyer"
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "争议解除，平台解冻",
+      "event": {
+        "id": "ev-07",
+        "bill_id": "BL-01",
+        "type": "bill.unfrozen",
+        "occurred_at": "2026-09-01T18:00:00Z",
+        "signatures": [{"party": "platform", "sig": "placeholder-sig-platform"}]
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "银行解除质押，质权回到无负担状态",
+      "event": {
+        "id": "ev-08",
+        "bill_id": "BL-01",
+        "type": "pledge.released",
+        "occurred_at": "2026-09-01T20:00:00Z",
+        "signatures": [{"party": "bank", "sig": "placeholder-sig-bank"}]
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "托运方背书转让给买方，双方签名，控制权正式交接",
+      "event": {
+        "id": "ev-09",
+        "bill_id": "BL-01",
+        "type": "bill.endorsed",
+        "occurred_at": "2026-09-02T09:00:00Z",
+        "signatures": [
+          {"party": "shipper", "sig": "placeholder-sig-shipper"},
+          {"party": "buyer", "sig": "placeholder-sig-buyer"}
+        ],
+        "from_holder": "shipper",
+        "to_holder": "buyer"
+      }
+    },
+    {
+      "expect": "not_holder",
+      "note": "【攻击】货权已转移，旧持有人 shipper 晚到的重复背书指令",
+      "event": {
+        "id": "ev-10",
+        "bill_id": "BL-01",
+        "type": "bill.endorsed",
+        "occurred_at": "2026-09-03T09:00:00Z",
+        "signatures": [
+          {"party": "shipper", "sig": "placeholder-sig-shipper"},
+          {"party": "attacker", "sig": "placeholder-sig-attacker"}
+        ],
+        "from_holder": "shipper",
+        "to_holder": "attacker"
+      }
+    },
+    {
+      "expect": "payment_holder_mismatch",
+      "note": "【攻击】旧持有人触发的放款指令：收款人 shipper 已不是控制权人",
+      "event": {
+        "id": "ev-11",
+        "bill_id": "BL-01",
+        "type": "payment.released",
+        "occurred_at": "2026-09-03T10:00:00Z",
+        "signatures": [{"party": "bank", "sig": "placeholder-sig-bank"}],
+        "pay_to": "shipper",
+        "amount": "100000.00",
+        "condition": {"required_holder": "buyer", "required_node": "discharged", "require_pledge_released": true}
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "承运人离线期间产生的卸货节点事后回补（发生时间 09-02T06，晚到）",
+      "event": {
+        "id": "ev-12",
+        "bill_id": "BL-01",
+        "type": "transport.reported",
+        "occurred_at": "2026-09-05T09:00:00Z",
+        "signatures": [{"party": "carrier", "sig": "placeholder-sig-carrier"}],
+        "idempotency_key": "node-2",
+        "node": {"seq": 2, "code": "discharged", "place": "鹿特丹港", "at_time": "2026-09-02T06:00:00Z"}
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "承运人改单：仅更正通知方等非核心字段，原值保留在事件中",
+      "event": {
+        "id": "ev-13",
+        "bill_id": "BL-01",
+        "type": "bill.amended",
+        "occurred_at": "2026-09-05T11:00:00Z",
+        "signatures": [{"party": "carrier", "sig": "placeholder-sig-carrier"}],
+        "amend": {"fields": {"notify_party": "buyer-agent-rotterdam", "destination_port": "Rotterdam"}},
+        "reason": "到港资料更正"
+      }
+    },
+    {
+      "expect": "amend_forbidden_field",
+      "note": "改单不得借更正之名改动批次数量或控制权",
+      "event": {
+        "id": "ev-14",
+        "bill_id": "BL-01",
+        "type": "bill.amended",
+        "occurred_at": "2026-09-05T11:30:00Z",
+        "signatures": [{"party": "carrier", "sig": "placeholder-sig-carrier"}],
+        "amend": {"fields": {"quantity": "200"}},
+        "reason": "试图篡改数量"
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "买方与承运人共同签名拆单：60 箱 + 40 箱 = 100 箱，数量守恒",
+      "event": {
+        "id": "ev-15",
+        "bill_id": "BL-01",
+        "type": "bill.split",
+        "occurred_at": "2026-09-04T09:00:00Z",
+        "signatures": [
+          {"party": "buyer", "sig": "placeholder-sig-buyer"},
+          {"party": "carrier", "sig": "placeholder-sig-carrier"}
+        ],
+        "children": ["BL-01A", "BL-01B"],
+        "splits": [
+          {"bill_id": "BL-01A", "quantity": "60"},
+          {"bill_id": "BL-01B", "quantity": "40"}
+        ]
+      }
+    },
+    {
+      "expect": "bill_inactive",
+      "note": "父单拆出后失效，不得再对父单操作",
+      "event": {
+        "id": "ev-16",
+        "bill_id": "BL-01",
+        "type": "bill.endorsed",
+        "occurred_at": "2026-09-04T10:00:00Z",
+        "signatures": [
+          {"party": "buyer", "sig": "placeholder-sig-buyer"},
+          {"party": "attacker", "sig": "placeholder-sig-attacker"}
+        ],
+        "from_holder": "buyer",
+        "to_holder": "attacker"
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "承运人对已失效父单晚到回补交付节点，沿血缘传播给两份子单",
+      "event": {
+        "id": "ev-17",
+        "bill_id": "BL-01",
+        "type": "transport.reported",
+        "occurred_at": "2026-09-05T15:00:00Z",
+        "signatures": [{"party": "carrier", "sig": "placeholder-sig-carrier"}],
+        "idempotency_key": "node-3",
+        "node": {"seq": 3, "code": "delivered", "place": "鹿特丹堆场", "at_time": "2026-09-03T08:00:00Z"}
+      }
+    },
+    {
+      "expect": "duplicate_callback",
+      "note": "同一交付节点的重复回调，幂等拦截且不重复传播",
+      "event": {
+        "id": "ev-18",
+        "bill_id": "BL-01",
+        "type": "transport.reported",
+        "occurred_at": "2026-09-05T15:05:00Z",
+        "signatures": [{"party": "carrier", "sig": "placeholder-sig-carrier"}],
+        "idempotency_key": "node-3-retry",
+        "node": {"seq": 3, "code": "delivered", "place": "鹿特丹堆场", "at_time": "2026-09-03T08:00:00Z"}
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "买方就 BL-01A（60箱）向银行质押融资",
+      "event": {
+        "id": "ev-19",
+        "bill_id": "BL-01A",
+        "type": "bill.pledged",
+        "occurred_at": "2026-09-04T12:00:00Z",
+        "signatures": [
+          {"party": "buyer", "sig": "placeholder-sig-buyer"},
+          {"party": "bank", "sig": "placeholder-sig-bank"}
+        ],
+        "pledgee": "bank"
+      }
+    },
+    {
+      "expect": "payment_pledge_held",
+      "note": "支付条件要求质押已解除，质押中的放款必须拦截",
+      "event": {
+        "id": "ev-20",
+        "bill_id": "BL-01A",
+        "type": "payment.released",
+        "occurred_at": "2026-09-04T13:00:00Z",
+        "signatures": [{"party": "bank", "sig": "placeholder-sig-bank"}],
+        "pay_to": "buyer",
+        "amount": "60000.00",
+        "condition": {"required_holder": "buyer", "required_node": "delivered", "require_pledge_released": true}
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "银行解除 BL-01A 质押",
+      "event": {
+        "id": "ev-21",
+        "bill_id": "BL-01A",
+        "type": "pledge.released",
+        "occurred_at": "2026-09-04T18:00:00Z",
+        "signatures": [{"party": "bank", "sig": "placeholder-sig-bank"}]
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "两份子单合单回 BL-02：60+40=100，数量守恒，血缘记录双亲",
+      "event": {
+        "id": "ev-22",
+        "bill_id": "BL-02",
+        "type": "bill.merged",
+        "occurred_at": "2026-09-05T16:00:00Z",
+        "signatures": [
+          {"party": "buyer", "sig": "placeholder-sig-buyer"},
+          {"party": "carrier", "sig": "placeholder-sig-carrier"}
+        ],
+        "parents": ["BL-01A", "BL-01B"],
+        "batch": {"cargo_code": "C-100", "quantity": "100", "unit": "box"}
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "对已并入 BL-02 的 BL-01B 晚到回补放行节点，传播到合单后的 BL-02",
+      "event": {
+        "id": "ev-23",
+        "bill_id": "BL-01B",
+        "type": "transport.reported",
+        "occurred_at": "2026-09-06T08:30:00Z",
+        "signatures": [{"party": "carrier", "sig": "placeholder-sig-carrier"}],
+        "idempotency_key": "node-4",
+        "node": {"seq": 4, "code": "customs_released", "place": "鹿特丹海关", "at_time": "2026-09-04T20:00:00Z"}
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "条件全部满足：控制权属于买方、交付事实已回补、无质押，银行定向放款",
+      "event": {
+        "id": "ev-24",
+        "bill_id": "BL-02",
+        "type": "payment.released",
+        "occurred_at": "2026-09-06T10:00:00Z",
+        "signatures": [{"party": "bank", "sig": "placeholder-sig-bank"}],
+        "idempotency_key": "pay-BL-02",
+        "pay_to": "buyer",
+        "amount": "100000.00",
+        "condition": {"required_holder": "buyer", "required_node": "delivered", "require_pledge_released": true}
+      }
+    },
+    {
+      "expect": "duplicate_callback",
+      "note": "支付网关重复回调：不同事件 ID 但同一支付幂等键，拒绝二次放款",
+      "event": {
+        "id": "ev-25",
+        "bill_id": "BL-02",
+        "type": "payment.released",
+        "occurred_at": "2026-09-06T10:02:00Z",
+        "signatures": [{"party": "bank", "sig": "placeholder-sig-bank"}],
+        "idempotency_key": "pay-BL-02",
+        "pay_to": "buyer",
+        "amount": "100000.00",
+        "condition": {"required_holder": "buyer", "required_node": "delivered", "require_pledge_released": true}
+      }
+    },
+    {
+      "expect": "payment_duplicate",
+      "note": "无幂等键的重复放款请求，凭已放款现状再次拦截",
+      "event": {
+        "id": "ev-26",
+        "bill_id": "BL-02",
+        "type": "payment.released",
+        "occurred_at": "2026-09-06T10:03:00Z",
+        "signatures": [{"party": "bank", "sig": "placeholder-sig-bank"}],
+        "pay_to": "buyer",
+        "amount": "100000.00",
+        "condition": {"required_holder": "buyer", "required_node": "delivered", "require_pledge_released": true}
+      }
+    },
+    {
+      "expect": "payment_holder_mismatch",
+      "note": "【攻击】旧持有人 shipper 伪造的晚到放款指令，收款方与现状不符",
+      "event": {
+        "id": "ev-27",
+        "bill_id": "BL-02",
+        "type": "payment.released",
+        "occurred_at": "2026-09-06T10:04:00Z",
+        "signatures": [{"party": "bank", "sig": "placeholder-sig-bank"}],
+        "pay_to": "shipper",
+        "amount": "100000.00",
+        "condition": {"required_holder": "shipper", "required_node": "delivered", "require_pledge_released": true}
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "平台就 BL-02 发起新争议冻结",
+      "event": {
+        "id": "ev-28",
+        "bill_id": "BL-02",
+        "type": "bill.frozen",
+        "occurred_at": "2026-09-06T11:00:00Z",
+        "signatures": [{"party": "platform", "sig": "placeholder-sig-platform"}],
+        "reason": "尾款争议"
+      }
+    },
+    {
+      "expect": "frozen",
+      "note": "冻结期间任何放款都必须拦截",
+      "event": {
+        "id": "ev-29",
+        "bill_id": "BL-02",
+        "type": "payment.released",
+        "occurred_at": "2026-09-06T11:10:00Z",
+        "signatures": [{"party": "bank", "sig": "placeholder-sig-bank"}],
+        "idempotency_key": "pay-BL-02-frozen",
+        "pay_to": "buyer",
+        "amount": "10000.00",
+        "condition": {"required_holder": "buyer", "required_node": "customs_released", "require_pledge_released": true}
+      }
+    },
+    {
+      "expect": "accepted",
+      "note": "争议解决，解冻，现状回到唯一一致状态",
+      "event": {
+        "id": "ev-30",
+        "bill_id": "BL-02",
+        "type": "bill.unfrozen",
+        "occurred_at": "2026-09-07T09:00:00Z",
+        "signatures": [{"party": "platform", "sig": "placeholder-sig-platform"}]
+      }
+    }
+  ]
+}

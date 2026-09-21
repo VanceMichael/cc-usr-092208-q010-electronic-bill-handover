@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "电子提单控制权交接事件场景",
+  "type": "object",
+  "required": ["domain", "version", "sample_id", "entries"],
+  "properties": {
+    "domain": { "const": "electronic-bill-handover" },
+    "version": { "type": "integer", "minimum": 2 },
+    "sample_id": { "type": "string", "minLength": 1 },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["expect", "event"],
+        "properties": {
+          "expect": {
+            "type": "string",
+            "description": "accepted 表示应当生效；其余为应命中的规则码，如 not_holder、frozen、duplicate_callback、payment_duplicate"
+          },
+          "note": { "type": "string" },
+          "event": { "$ref": "#/$defs/event" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "signature": {
+      "type": "object",
+      "required": ["party", "sig"],
+      "properties": {
+        "party": { "type": "string", "minLength": 1 },
+        "sig": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "batch": {
+      "type": "object",
+      "required": ["cargo_code", "quantity", "unit"],
+      "properties": {
+        "cargo_code": { "type": "string", "minLength": 1 },
+        "quantity": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$" },
+        "unit": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "event": {
+      "type": "object",
+      "required": ["id", "bill_id", "type", "occurred_at", "signatures"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "bill_id": { "type": "string", "minLength": 1 },
+        "type": {
+          "enum": [
+            "bill.issued",
+            "bill.endorsed",
+            "transport.reported",
+            "bill.amended",
+            "bill.split",
+            "bill.merged",
+            "bill.pledged",
+            "pledge.released",
+            "bill.frozen",
+            "bill.unfrozen",
+            "payment.released"
+          ]
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "业务发生时间；晚于已入账时间到达即为离线回补"
+        },
+        "signatures": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/signature" }
+        },
+        "idempotency_key": { "type": "string" },
+        "issuer": { "type": "string" },
+        "initial_holder": { "type": "string" },
+        "from_holder": { "type": "string" },
+        "to_holder": { "type": "string" },
+        "batch": { "$ref": "#/$defs/batch" },
+        "node": {
+          "type": "object",
+          "required": ["seq", "code", "at_time"],
+          "properties": {
+            "seq": { "type": "integer", "minimum": 1 },
+            "code": { "type": "string", "minLength": 1 },
+            "place": { "type": "string" },
+            "at_time": { "type": "string", "format": "date-time" }
+          },
+          "additionalProperties": false
+        },
+        "amend": {
+          "type": "object",
+          "required": ["fields"],
+          "properties": {
+            "fields": {
+              "type": "object",
+              "additionalProperties": { "type": "string" },
+              "description": "禁止包含 holder、quantity、cargo_code"
+            }
+          },
+          "additionalProperties": false
+        },
+        "children": { "type": "array", "items": { "type": "string" } },
+        "splits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["bill_id", "quantity"],
+            "properties": {
+              "bill_id": { "type": "string" },
+              "quantity": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "parents": { "type": "array", "items": { "type": "string" } },
+        "pledgee": { "type": "string" },
+        "pay_to": { "type": "string" },
+        "amount": { "type": "string" },
+        "condition": {
+          "type": "object",
+          "required": ["required_holder", "required_node"],
+          "properties": {
+            "required_holder": { "type": "string" },
+            "required_node": { "type": "string" },
+            "require_pledge_released": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
